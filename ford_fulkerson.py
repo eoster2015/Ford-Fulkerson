@@ -33,17 +33,18 @@ def ford_fulkerson(g):
         g_residual.es["label"] = g_residual.es["weight"]
 
         # find augmenting path
+        # igraph returns a warning when a valid shortest path cannot be found,
+        # which is the terminating state for ford-fulkerson
         with warnings.catch_warnings():
-            # suppress igraph warning for shortest path of length 0,
-            # since that is the condition we are checking for
-            warnings.filterwarnings("ignore", message="Couldn't reach some vertices")
-            current_path = g_residual.get_shortest_paths(v=g_residual.vs[0], to=g_residual.vs[-1], output="epath")
+            warnings.filterwarnings("error", message="Couldn't reach some vertices")
+            try:
+                current_path = g_residual.get_shortest_paths(v=g_residual.vs[0], to=g_residual.vs[-1], output="epath")
+            except SystemError:
+                residual_networks.append(copy.deepcopy(g_residual))
+                break
         current_path = list(itertools.chain.from_iterable(current_path))
         # if shortest path length between source and target vertices on the residual network is 0,
         # then the maximum flow through network has been found and the loop can be exited
-        if len(current_path) == 0:
-            residual_networks.append(copy.deepcopy(g_residual))
-            break
         current_weight = []
         for i in range(len(current_path)):
             current_weight.append(g_residual.es[current_path[i]]["weight"])
@@ -81,12 +82,16 @@ def min_cut(g):
     # the minimum cut is the edges on the shortest paths connecting reachable vertexes to the source node
     final_residual_network_shortest_paths = []
     for i in range(1, final_residual_network.vcount()):
+        # igraph returns a warning when a valid shortest path cannot be found,
+        # which indicates the vertex is in the second partition with the target
         with warnings.catch_warnings():
-            # suppress igraph warning for shortest path of length 0
-            warnings.filterwarnings("ignore", message="Couldn't reach some vertices")
-            current_path = final_residual_network.get_shortest_paths(
-                v=final_residual_network.vs[0], to=final_residual_network.vs[i], output="vpath")[0]
-        final_residual_network_shortest_paths.append(current_path)
+            warnings.filterwarnings("error", message="Couldn't reach some vertices")
+            try:
+                current_path = final_residual_network.get_shortest_paths(
+                    v=final_residual_network.vs[0], to=final_residual_network.vs[i], output="vpath")[0]
+                final_residual_network_shortest_paths.append(current_path)
+            except SystemError:
+                final_residual_network_shortest_paths.append([])
 
     vertex_partitions = [[0], []]
     for i in range(len(final_residual_network_shortest_paths)):
