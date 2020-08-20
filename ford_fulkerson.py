@@ -4,6 +4,7 @@ from igraph import *
 import itertools
 import warnings
 
+# an interface between cairo and python, such as cairocffi, is necessary for graphs to plot properly
 
 def ford_fulkerson(g):
     nodes = g.vs.indices
